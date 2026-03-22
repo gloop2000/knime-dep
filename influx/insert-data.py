@@ -2,9 +2,7 @@ import pandas as pd
 import datetime
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
-
-
-
+import os
 
 
 def explode(df):
@@ -49,8 +47,6 @@ def insert_data(df: pd.DataFrame, url="localhost:8086", token="", org= "", measu
     else:
         print(f"Bucket '{bucket_name}' already exists.")
 
-
-
     # Force recent timestamps (so queries like -1h will work)
     now = datetime.datetime.now(datetime.timezone.utc)
     df.index = pd.date_range(start=now, periods=len(df), freq='10s')
@@ -76,9 +72,6 @@ def query_data(
     limit: int = 1000,
     time_range: str = "-30d"
 ):
-    """
-    Query a specific measurement in a specific bucket and print results.
-    """
     client = InfluxDBClient(url=url, token=token, org=org)
     flux_query = f'''
     from(bucket: "{bucket}")
@@ -96,11 +89,9 @@ def query_data(
 
 def check_bucket(url:str = "", token: str = "", org: str = ""):
     client = InfluxDBClient(url=url, token=token, org=org)
-
     print("Buckets in org:")
     for b in client.buckets_api().find_buckets().buckets:
         print(f"- {b.name}")
-
     client.close()
 
 
@@ -109,15 +100,28 @@ def check_bucket(url:str = "", token: str = "", org: str = ""):
 ###########################################################################
 
 url = f"http://localhost:8086"
-token = "93ukPnhw6Yrr38ZTd4Ihdj8BgSIVQhb9Xu5bVk3qf7teMdj66gQxuypZB81GhqKaxNn_a02l93437KAYJ6zkAw=="
+token = "GhjdwJm9kLuPqz-kBtql1EJZHWnXsl3oP4mk2wmzS18gqUhi-aN86NBTxkgJNR5AAZKb3IisxKALEdBNO--xng=="
 bucket = "UEdata1"
 org = "my-org"
-measurement= "UEThroughput"
-time_range = "-1h"   
+measurement = "UEThroughput"
+time_range = "-1h"
 
-# sample DataFrame
-df = pd.read_csv("/home/testbed/testbed/pipelien-generator/influx/cells.csv")
+#  Path validation
+csv_path = "C:/KNIME/knime-dep/influx/cells.csv"
+
+if not csv_path or csv_path.strip() == "":
+    raise ValueError("❌ Error: No path selected! Please provide a valid path to the CSV file.")
+
+if not os.path.exists(csv_path):
+    raise FileNotFoundError(f"❌ Error: File not found at path: '{csv_path}'. Please check the path and try again.")
+
+print(f" CSV file found at: {csv_path}")
+
+# Load CSV
+df = pd.read_csv(csv_path)
+
 # Insert the DataFrame into InfluxDB
-# insert_data(df,url=url, measurement=measurement, bucket_name=bucket, token=token, org=org)
-# query data
+insert_data(df, url=url, measurement=measurement, bucket_name=bucket, token=token, org=org)
+
+# Query data
 query_data(measurement=measurement, bucket=bucket, url=url, token=token, org=org, limit=1, time_range=time_range)
