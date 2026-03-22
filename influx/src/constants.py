@@ -1,0 +1,5 @@
+INFLUX_BUCKET="UEdata1"
+INFLUX_MEASUREMENT="UEThroughput"
+INFLUXDB_HOST="http://localhost:8086"
+INFLUX_TOKEN="GhjdwJm9kLuPqz-kBtql1EJZHWnXsl3oP4mk2wmzS18gqUhi-aN86NBTxkgJNR5AAZKb3IisxKALEdBNO--xng=="
+INFLUX_ORG="my-org"
