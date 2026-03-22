@@ -1,16 +1,16 @@
 # MongoDB Docker Setup and Python Integration
 
-This project provides a containerized MongoDB environment using Docker Compose, it includes Python scripts for data insertion and querying the data and a KNIME workflow file to load, train a Binary Classification model and predict data in KNIME.
-
----
+This project provides a containerized MongoDB environment using Docker, it includes Python scripts for data insertion and querying the data and a KNIME workflow to train a Binary Classification model to predict diabetes from patient data.
 
 ## Project Structure
 
-- [docker-compose.yml](./docker-compose.yaml) - Configuration for the MongoDB container.
-- [data-insert.py](./data-insert.py) - Script to populate the database.
-- [query-db.py](./query-db.py) - Script to retrieve data.
-- [diabetes.csv](./diabetes.csv) - Diagnostic measurements of patients from [Kaggle](https://www.kaggle.com/datasets/mathchi/diabetes-data-set)
-- [knime-workflows/diabetes_predictor.knwf](./knime-workflows/diabetes_predictor.knwf) - KNIME workflow to train a Binary Classification model to predict diabetes from a patient data.
+* [__docker-compose.yml__](docker-compose.yml) - Configuration for the MongoDB container.
+* [__data-insert.py__](data-insert.py) - Script to populate the database.
+* [__query-db.py__](query-db.py) - Script to retrieve data.
+* [__diabetes.csv__](diabetes.csv) - Diagnostic measurements of patients from __Kaggle__
+* [__knime-workflows/diabetes_predictor.knwf__](knime-workflows/diabetes_predictor.knwf) - KNIME workflow to train a Binary Classification model to predict diabetes from patient data.
+
+---
 
 ## Setup Instructions
 
@@ -18,87 +18,209 @@ This project provides a containerized MongoDB environment using Docker Compose, 
 
 Ensure you have the following installed:
 
-- **Docker** and **Docker Compose**
-- **Python 3.x**: With libraries
-  - **PyMongo library**: `pip install pymongo`
-  - **Pandas**: `pip install pandas`
-- **KNIME Analytics Platform**: With extensions
-  - KNIME Deep Learning - Tensorflow Integration
-  - KNIME MongoDB Integration
-  - KNIME Python Integration
+* **Docker** - [Download Docker Desktop](https://www.docker.com/products/docker-desktop)
+* **Python 3.x** - With the following libraries:
+  * PyMongo: `pip install pymongo`
+  * Pandas: `pip install pandas`
+* **KNIME Analytics Platform** - With the following extensions:
+  * KNIME Deep Learning - Tensorflow Integration
+  * KNIME MongoDB Integration
+  * KNIME Python Integration
 
+---
 
-### 2. Launch the Database
+### 2. Launch MongoDB in Docker
 
-To start the MongoDB container in the background (detached mode), run:
+#### 2.1 Start the Container
 
-`docker-compose up -d`
+If running for the **first time**, pull and start the MongoDB container:
+```bash
+docker run -d --name mongodb_container -p 27017:27017 mongo:latest
+```
 
-To verify the container is running, use:
+If the container **already exists**, simply start it:
+```bash
+docker start mongodb_container
+```
 
-`docker ps`
+#### 2.2 Setup using Docker Compose (Alternative)
 
-### 3. Data Operations
+If you have the `docker-compose.yml` file, run:
+```bash
+docker compose up -d
+```
 
-Once the database is active, use the provided Python scripts to interact with it.
+#### 2.3 Verify the Container is Running
+```bash
+docker ps
+```
 
-#### 3.1. Insert Data
+You should see `mongodb_container` with status **Up** and port `0.0.0.0:27017->27017/tcp` ✅
 
-Point the `path` variable in [data-insert.py](./data-insert.py) to [diabetes.csv](./diabetes.csv) in you local file system.
+#### 2.4 Verify MongoDB Health
+```bash
+docker exec -it mongodb_container mongosh
+```
 
-Run the [data-insert.py](./data-insert.py) script to populate the database
+Inside mongosh shell run:
+```js
+db.runCommand({ ping: 1 })
+```
 
-`python data-insert.py`
+Expected response:
+```json
+{ ok: 1 }
+```
 
-#### 3.2. Query Data
+Type `exit` to leave the shell.
 
-Run the [query-db.py](./query-db.py) script to retrieve and view the stored information:
+---
 
-`python query-db.py`
+### 3. Configuration
 
-### 4. Running the workflow in KNIME
+Update the `path` variable in [`data-insert.py`](data-insert.py) to point to `diabetes.csv` in your local filesystem:
+```python
+path = "C:/path/to/diabetes.csv"
+```
 
-The workflow sample uses Keras extensions to implement a model, which requires certain Python dependencies to be installed using conda environments. In order to setup KNIME for the Deep learning integrations, follow the instructions in [KNIME Documentation: Set Up Deep Learning](https://docs.knime.com/ap/latest/deep_learning_installation_guide/).
+---
 
-#### 4.1 Import the workflow
+### 4. Data Operations
 
-A workflow to load data from MongoDB database with datapreprocessing, training and evaluation steps have been exproted to [diabetes_predictor.knwf](./knime-workflows/diabetes_predictor.knwf)
+Navigate to the project folder first:
+```bash
+cd path/to/mongo
+```
 
-To Import the workflow:
+#### 4.1 Insert Data
 
-1.  Open KNIME Analytics Platform
-2.  In **Local Space**
-3.  Select **Import Workflow**
-4.  Choose [diabetes_predictor.knwf](./knime-workflows/diabetes_predictor.knwf)
+Make sure the `path` variable in [`data-insert.py`](data-insert.py) points to `diabetes.csv` in your local filesystem.
 
-#### 4.2 Configure MongoDB connection
+Run the insert script to populate MongoDB with records from `diabetes.csv`:
+```bash
+python data-insert.py
+```
 
-Configure **MongoDBConnector:**
+Expected output:
+```
+Inserting 768 records...
+Success! Data indexed in 'health_data.diabetes' collection.
+Sample record from DB: {'_id': ObjectId('...'), 'Pregnancies': 6, 'Glucose': 148, ...}
+```
 
-1. Right click on the **MongoDB Connector** node -> Click on Configure
-2. In the pop-up window, configure the hostname, port and authentication details required to connect the server. e.g., `localhost:27017`
-3. Click on Apply
-4. Execute the node, green indicates that the connection was successful. Red indicates error.
+#### 4.2 Query Data
 
-Configure **MongoDBReader:**
+Run the [`query-db.py`](query-db.py) script to retrieve and display the stored data:
+```bash
+python query-db.py
+```
 
-1. Right click on the **MongoDB Reader** node -> Click on Configure
-2. Provide the database name and collection name. e.g., `database name: health_data, collection: diabetes`
-3. Execute the node
+Expected output:
+```
+--- Fetching the first 5 records ---
+Record 1: {'Pregnancies': 6, 'Glucose': 148, 'BloodPressure': 72, ...}
+Record 2: {'Pregnancies': 1, 'Glucose': 85, 'BloodPressure': 66, ...}
+...
+```
 
-#### 4.3 Configure Tensorflow Network Writer
+---
 
-1. Right click on the **Tensorflow Network Writer** node -> Click on Configure
-2. Browse and provide the path to save the model.
+### 5. Data Fields
 
-#### 4.4 Execute the workflow
+The `diabetes.csv` dataset contains the following diagnostic measurements:
 
-1. From Menu bar -> Click on Execute all
+| Field | Description |
+|---|---|
+| `Pregnancies` | Number of times pregnant |
+| `Glucose` | Plasma glucose concentration |
+| `BloodPressure` | Diastolic blood pressure (mm Hg) |
+| `SkinThickness` | Triceps skin fold thickness (mm) |
+| `Insulin` | 2-Hour serum insulin (mu U/ml) |
+| `BMI` | Body mass index |
+| `DiabetesPedigreeFunction` | Diabetes pedigree function |
+| `Age` | Age in years |
+| `Outcome` | Class variable (0 or 1) |
 
-This will execute all the nodes in the workflow sequentially and save the model in a zip file to the provided path.
+---
 
-### 5. Stopping the Services
+### 6. Running the Workflow in KNIME
 
-To stop the MongoDB instance and remove the containers, execute the follwoing command:
+The workflow sample uses Keras extensions to implement an LSTM model, which requires certain Python dependencies to be installed using conda environments. In order to setup KNIME for the Deep learning integrations, follow the instructions in [KNIME Documentation: Set Up Deep Learning](https://docs.knime.com/ap/latest/deep_learning_installation_guide/).
 
-`docker-compose down`
+#### 6.1 Import the Workflow
+
+1. Open **KNIME Analytics Platform**
+2. In **Local Space** on the left panel
+3. Click **Import Workflow**
+4. Choose [`knime-workflows/diabetes_predictor.knwf`](knime-workflows/diabetes_predictor.knwf)
+
+#### 6.2 Configure MongoDB Connector
+
+1. **Right click** on `MongoDB Connector` node → Click **Configure**
+2. Fill in the connection details:
+   - **Hostname:** `localhost`
+   - **Port:** `27017`
+   - **Authentication:** `None`
+3. Click **Apply** → **OK**
+4. **Right click** → **Execute** — green indicates success ✅
+
+#### 6.3 Configure MongoDB Reader
+
+1. **Right click** on `MongoDB Reader` node → Click **Configure**
+2. Fill in:
+   - **Database:** `health_data`
+   - **Collection:** `diabetes`
+3. Click **OK** → **Execute**
+
+#### 6.4 Configure TensorFlow Network Writer
+
+1. **Right click** on `TensorFlow Network Writer` node → Click **Configure**
+2. Click **Browse** and provide the path to save the model
+3. Click **OK**
+
+#### 6.5 Execute the Workflow
+
+1. From **Menu bar** → Click **Execute All**
+2. This will execute all nodes sequentially and save the model as a zip file ✅
+
+---
+
+### 7. Stopping the Services
+
+To stop the MongoDB container when done:
+```bash
+docker stop mongodb_container
+```
+
+To stop and remove using Docker Compose:
+```bash
+docker compose down
+```
+
+To stop and completely remove the container:
+```bash
+docker rm -f mongodb_container
+```
+
+---
+
+## Troubleshooting
+
+### Container Name Conflict
+If you see a container name conflict error, remove the old container first:
+```bash
+docker rm -f mongodb_container
+docker run -d --name mongodb_container -p 27017:27017 mongo:latest
+```
+
+### CSV File Not Found
+Make sure the path to `diabetes.csv` in [`data-insert.py`](data-insert.py) is correct:
+```python
+path = "C:/Users/hp/Downloads/diabetes.csv"
+```
+
+### KNIME MongoDB Connection Failed
+If the MongoDB Connector node turns red:
+* Make sure the MongoDB container is running: `docker ps`
+* Make sure **Authentication** is set to `None`
+* Verify **Hostname** is `localhost` and **Port** is `27017`

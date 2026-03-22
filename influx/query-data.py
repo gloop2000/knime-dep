@@ -1,18 +1,15 @@
-from src.influx_db import query_data
-from src.constants import INFLUX_BUCKET, INFLUX_MEASUREMENT
-from src.helpers import load_config
+from influx_db import query_data
+from src.constants import INFLUX_BUCKET, INFLUX_MEASUREMENT, INFLUXDB_HOST, INFLUX_TOKEN, INFLUX_ORG
 
 ################################################################################
 # This script queries data from InfluxDB and prints the results to the console #
 ################################################################################
 
-
-config = load_config()
-url = f"http://localhost:{config['influxdb']['port']}"
-token = config['influxdb']['token']
-bucket = config['influxdb']['bucket']
-org = config['influxdb']['org']
-measurement= config['influxdb']['measurement']
+url = INFLUXDB_HOST
+token = INFLUX_TOKEN
+bucket = INFLUX_BUCKET
+org = INFLUX_ORG
+measurement= INFLUX_MEASUREMENT
 time_range = "-1h"   
 
 print(f"Configuration: url={url}, bucket={bucket}, org={org}, measurement={measurement}, time_range={time_range}")

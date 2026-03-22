@@ -1,17 +1,18 @@
 # InfluxDB Docker Setup and Python Integration
 
-This project provides a containerized InfluxDB environment using Docker, it includes Python scripts for data insertion and querying the time-series data.
+This project provides a containerized InfluxDB environment using Docker, it includes Python scripts for data insertion and querying the time-series data and a KNIME workflow to train an LSTM model to predict throughput of a cell tower.
 
 ## Project Structure
 
-* __docker-compose.yaml__ - Configuration for the InfluxDB container.
-* __insert-data.py__ - Script to insert CSV data into InfluxDB.
-* __query-data.py__ - Script to retrieve and display data from InfluxDB.
-* __influx_db.py__ - Helper functions for InfluxDB operations.
-* __cells.csv__ - Time-series UE throughput measurements dataset.
-* __src/constants.py__ - InfluxDB connection constants (token, org, bucket).
-* __src/helpers.py__ - Helper function to load configuration.
-* __src/influx_db.py__ - Query function used by query-data.py.
+* [__knime-influxdb2-integration-extension.zip__](https://drive.google.com/file/d/1JzU-6886-arwCi21VX587YRCRmF5J0xf/view?usp=sharing) - Knime extension to connect and read data from InfluxDB 2
+* [__knime-workflows/cells.knwf__](knime-workflows/cells.knwf) - Example workflow to train, evaluate and save an LSTM model in KNIME
+* [__src/constants.py__](src/constants.py) - InfluxDB connection constants (token, org, bucket).
+* [__cells.csv__](cells.csv) - Time-series UE throughput measurements dataset.
+* [__docker-compose.yaml__](docker-compose.yaml) - Configuration for the InfluxDB container.
+* [__insert-data.py__](insert-data.py) - Script to insert CSV data into InfluxDB.
+* [__query-data.py__](query-data.py) - Script to retrieve and display data from InfluxDB.
+* [__influx_db.py__](influx_db.py) - Helper functions for InfluxDB operations.
+
 
 ---
 
@@ -25,7 +26,10 @@ Ensure you have the following installed:
 * **Python 3.x** - With the following libraries:
   * InfluxDB client: `pip install influxdb-client`
   * Pandas: `pip install pandas`
-
+* **KNIME Analytics Platform** - With the following extensions:
+  * KNIME Deep Learning - Tensorflow Integration
+  * KNIME Python Integration
+  * KNIME InfluxDB 2 Integration ([__knime-influxdb2-integration-extension.zip__](https://drive.google.com/file/d/1JzU-6886-arwCi21VX587YRCRmF5J0xf/view?usp=sharing)) *(see [installation steps](#61-install-the-extension-knime-influxdb-2-integration) for the custom extension)*
 ---
 
 ### 2. Launch InfluxDB in Docker
@@ -76,13 +80,13 @@ Expected response:
 docker exec -it influxdb influx auth list
 ```
 
-Copy the token value and update it in `src/constants.py`.
+Copy the token value and update it in [`src/constants.py`](src/constants.py).
 
 ---
 
 ### 3. Configuration
 
-Update the `src/constants.py` file with your InfluxDB credentials:
+Update the [`src/constants.py`](src/constants.py) file with your InfluxDB credentials:
 ```python
 INFLUX_BUCKET="UEdata1"
 INFLUX_MEASUREMENT="UEThroughput"
@@ -102,7 +106,7 @@ cd path/to/influx
 
 #### 4.1 Insert Data
 
-Make sure the following in `insert-data.py` are correct:
+Make sure the following in [`insert-data.py`](insert-data.py) are correct:
 * The csv path points to `cells.csv` in your local filesystem
 * The `token` matches the one from `docker exec -it influxdb influx auth list`
 * The `insert_data()` function call is **NOT** commented out
@@ -121,7 +125,7 @@ data inserted
 
 #### 4.2 Query Data
 
-Run the query script to retrieve and display the stored data:
+Run the [`query-data.py`](query-data.py) script to retrieve and display the stored data:
 ```bash
 python query-data.py
 ```
@@ -139,7 +143,7 @@ FluxRecord() table: 1, {..., '_field': 'availPrbUl', '_measurement': 'UEThroughp
 
 ### 5. Data Fields
 
-The `cells.csv` dataset contains the following UE throughput measurements:
+The [`cells.csv`](cells.csv) dataset contains the following UE throughput measurements:
 
 | Field | Description |
 |---|---|
@@ -158,7 +162,69 @@ The `cells.csv` dataset contains the following UE throughput measurements:
 
 ---
 
-### 6. Stopping the Services
+### 6. Running the Workflow in KNIME
+
+The workflow sample uses Keras extensions to implement an LSTM model, which requires certain Python dependencies to be installed using conda environments. In order to setup KNIME for the Deep learning integrations, follow the instructions in [KNIME Documentation: Set Up Deep Learning](https://docs.knime.com/ap/latest/deep_learning_installation_guide/).
+
+#### 6.1 Install the extension: KNIME InfluxDB 2 Integration
+
+Download and extract [__knime-influxdb2-integration-extension.zip__](https://drive.google.com/file/d/1JzU-6886-arwCi21VX587YRCRmF5J0xf/view?usp=sharing) to the local file system.
+
+1. Open **KNIME Analytics Platform**
+2. In **Local Space** on the left panel
+3. Go to the **Menu bar**
+4. Click on **Preferences**
+5. In the Preferences window:
+    1.  Expand **Install/Update**
+    2.  Click on **Available Software Sites**
+    3.  Click on **Add** in **Available Software Sites** view
+    4.  Click on **Local** in the pop-up window
+    5.  Select the extracted folder
+    6.  Provide a name (e.g., `InfluxDB2 Integration`)
+    7.  Click **Add**
+6. You have setup the software site, to install the extension:
+    1.  Go to the **Menu bar**
+    2.  Click on **Install Extensions**
+    3.  In the search/filter box, type **Influx**
+    4.  Select **KNIME InfluxDB2 Integration**
+    5.  Click **Next**, then **Finish**
+7. Restart KNIME
+
+After restarting, verify the installtion by opening a workflow and search for **InfluxDB Reader** in the node repository.
+
+#### 6.2 Import the Workflow
+
+1. Open **KNIME Analytics Platform**
+2. In **Local Space** on the left panel
+3. Click **Import Workflow**
+4. Choose [`knime-workflows/cells.knwf`](knime-workflows/cells.knwf)
+
+#### 6.3 Configure InfluxDB reader
+
+1. Select **InfluxDB Reader** node
+2. In the properties window to the right, fill in the values:
+    - Database URL: http://localhost:8086
+    - Access Token: <your-access-token>
+    - Organization: my-org
+    - Query: 
+    ```bash
+    from(bucket: "UEdata1")  |> range(start: -30d)  |> filter(fn: (r) => r["_measurement"] == "UEThroughput")  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+    ```
+3. Apply and Execute
+
+#### 6.4 Configure TensorFlow Network Writer
+
+1. **Right click** on `TensorFlow Network Writer` node → Click **Configure**
+2. Click **Browse** and provide the path to save the model
+3. Click **OK**
+
+#### 6.5 Execute the Workflow
+The configuration of the rest of the nodes should be saved. You can now execute the workflow:
+
+1. From **Menu bar** → Click **Execute All**
+2. This will execute all nodes sequentially and save the model as a zip file ✅
+
+### 7. Stopping the Services
 
 To stop the InfluxDB container when done:
 ```bash
@@ -180,7 +246,7 @@ If you see a `401 Unauthorized` error, your token has expired or changed. Get a 
 docker exec -it influxdb influx auth list
 ```
 
-Then update the token in both `insert-data.py` and `src/constants.py`.
+Then update the token in both [`insert-data.py`](insert-data.py) and [`src/constants.py`](src/constants.py).
 
 ### Container Name Conflict
 If you see a container name conflict error, remove the old container first:
@@ -190,7 +256,7 @@ docker run -d --name influxdb -p 8086:8086 influxdb:2.7
 ```
 
 ### CSV File Not Found
-Make sure the path to `cells.csv` in `insert-data.py` is correct. Use just the filename if running from the same folder:
+Make sure the path to `cells.csv` in [`insert-data.py`](insert-data.py) is correct. Use just the filename if running from the same folder:
 ```python
 df = pd.read_csv("cells.csv")
 ```

@@ -11,22 +11,28 @@ db = client['health_data']
 collection = db['diabetes']
 
 # 3. Locate the CSV
-# Replace 'path' with the actual string from your kagglehub download output
-path = "/home/testbed/Downloads/archive/diabetes.csv" 
+# Replace 'path' with the actual string from your local file system
+path = "/home/testbed/Downloads/archive/diabetes.csv"
 
-if os.path.exists(path):
-    # Load data with Pandas
-    df = pd.read_csv(path)
-    
-    # Convert DataFrame to a list of dictionaries (JSON-like)
-    data_dict = df.to_dict("records")
-    
-    # 4. Insert into Mongo
-    print(f"Inserting {len(data_dict)} records...")
-    collection.insert_many(data_dict)
-    print("Success! Data indexed in 'health_data.diabetes' collection.")
-else:
-    print("Error: CSV file not found at the specified path.")
+#  Path validation
+if not path or path.strip() == "":
+    raise ValueError(" Error: Path is not given! Please provide a valid path to the CSV file.")
+
+if not os.path.exists(path):
+    raise FileNotFoundError(f" Error: File not found at path: '{path}'. Please check the path and try again.")
+
+print(f" CSV file found at: {path}")
+
+# Load data with Pandas
+df = pd.read_csv(path)
+
+# Convert DataFrame to a list of dictionaries (JSON-like)
+data_dict = df.to_dict("records")
+
+# 4. Insert into Mongo
+print(f"Inserting {len(data_dict)} records...")
+collection.insert_many(data_dict)
+print("Success! Data indexed in 'health_data.diabetes' collection.")
 
 # 5. Verify a sample record
 print("Sample record from DB:", collection.find_one())
