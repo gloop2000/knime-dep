@@ -179,6 +179,7 @@ The workflow sample uses Keras extensions to implement an LSTM model, which requ
 3. Click **OK**
 
 #### 6.5 Execute the Workflow
+The configuration of the rest of the nodes should be saved. You can now execute the workflow:
 
 1. From **Menu bar** → Click **Execute All**
 2. This will execute all nodes sequentially and save the model as a zip file ✅
